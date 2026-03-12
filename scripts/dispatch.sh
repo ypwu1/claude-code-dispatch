@@ -37,7 +37,7 @@
 
 set -euo pipefail
 
-RESULT_DIR="/home/ubuntu/clawd/data/claude-code-results"
+RESULT_DIR="/home/oscar/.openclaw/data/claude-code-results"
 META_FILE="${RESULT_DIR}/task-meta.json"
 OUTPUT_FILE="/tmp/claude-code-output.txt"
 TASK_OUTPUT="${RESULT_DIR}/task-output.txt"
@@ -53,7 +53,7 @@ CALLBACK_GROUP=""              # Agent's own group for callback
 CALLBACK_DM=""                 # Telegram user ID for DM callback
 CALLBACK_ACCOUNT=""            # Telegram bot account for DM callback
 CALLBACK_SESSION="${OPENCLAW_SESSION_KEY:-}"
-WORKDIR="/home/ubuntu/clawd"
+WORKDIR="/home/oscar/.openclaw"
 AGENT_TEAMS=""
 AGENT_ID=""
 AGENTS_JSON=""
