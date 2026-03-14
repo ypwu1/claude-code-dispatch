@@ -5,8 +5,8 @@
 
 set -uo pipefail
 
-LOG="/home/oscar/.openclaw/data/claude-code-results/hook.log"
-RESULT_DIR="/home/oscar/.openclaw/data/claude-code-results"
+LOG="/home/ubuntu/clawd/data/claude-code-results/hook.log"
+RESULT_DIR="/home/ubuntu/clawd/data/claude-code-results"
 META_FILE="${RESULT_DIR}/task-meta.json"
 OPENCLAW_BIN="/home/ubuntu/.npm-global/bin/openclaw"
 
