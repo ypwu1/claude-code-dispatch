@@ -39,6 +39,7 @@ set -euo pipefail
 
 HOME_DIR="${HOME:-$(getent passwd "$(id -u)" | cut -d: -f6)}"
 OPENCLAW_HOME="${OPENCLAW_HOME:-${HOME_DIR}/.openclaw}"
+OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-${OPENCLAW_HOME}/openclaw.json}"
 RESULT_DIR="${OPENCLAW_HOME}/data/claude-code-results"
 META_FILE="${RESULT_DIR}/task-meta.json"
 OUTPUT_FILE="/tmp/claude-code-output.txt"
@@ -256,8 +257,13 @@ if [ -n "$VERBOSE" ]; then
 fi
 
 # ---- 4. Set environment ----
+if [ -f "$OPENCLAW_CONFIG" ]; then
+    OPENCLAW_GATEWAY_TOKEN="${OPENCLAW_GATEWAY_TOKEN:-$(jq -r '.gateway.token // empty' "$OPENCLAW_CONFIG" 2>/dev/null || true)}"
+    OPENCLAW_GATEWAY_PORT="${OPENCLAW_GATEWAY_PORT:-$(jq -r '.gateway.port // empty' "$OPENCLAW_CONFIG" 2>/dev/null || true)}"
+fi
 export OPENCLAW_GATEWAY_TOKEN="${OPENCLAW_GATEWAY_TOKEN:-477d47934e5f6b02bfb823ba681bb743eae55479b7d260e8}"
-export OPENCLAW_GATEWAY="${OPENCLAW_GATEWAY:-http://127.0.0.1:18789}"
+export OPENCLAW_GATEWAY_PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
+export OPENCLAW_GATEWAY="${OPENCLAW_GATEWAY:-http://127.0.0.1:${OPENCLAW_GATEWAY_PORT}}"
 
 # ---- 5. Run Claude Code (output tee'd for hook) ----
 echo "🚀 Launching Claude Code..."
