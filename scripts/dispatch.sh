@@ -9,6 +9,7 @@
 #   --prompt-file FILE          Read prompt from file
 #   -n, --name NAME             Task name (for tracking)
 #   -g, --group ID              Telegram group ID for result delivery
+#   --account ID                Telegram account id for result delivery
 #   -s, --session KEY           Callback session key
 #   -w, --workdir DIR           Working directory for Claude Code
 #   --agent-teams               Enable Agent Teams (lead + teammates)
@@ -50,6 +51,7 @@ PROMPT=""
 PROMPT_FILE=""
 TASK_NAME="adhoc-$(date +%s)"
 TELEGRAM_GROUP="-5006066016"  # Default: Claude Code Tasks group
+TELEGRAM_ACCOUNT=""           # Telegram account id for result delivery
 CALLBACK_GROUP=""              # Agent's own group for callback
 CALLBACK_DM=""                 # Telegram user ID for DM callback
 CALLBACK_ACCOUNT=""            # Telegram bot account for DM callback
@@ -80,6 +82,7 @@ while [[ $# -gt 0 ]]; do
         --prompt-file) PROMPT_FILE="$2"; shift 2;;
         -n|--name) TASK_NAME="$2"; shift 2;;
         -g|--group) TELEGRAM_GROUP="$2"; shift 2;;
+        --account) TELEGRAM_ACCOUNT="$2"; shift 2;;
         -s|--session) CALLBACK_SESSION="$2"; shift 2;;
         --callback-group) CALLBACK_GROUP="$2"; shift 2;;
         --callback-dm) CALLBACK_DM="$2"; shift 2;;
@@ -166,6 +169,7 @@ mkdir -p "$RESULT_DIR"
 jq -n \
     --arg name "$TASK_NAME" \
     --arg group "$TELEGRAM_GROUP" \
+    --arg telegram_account "$TELEGRAM_ACCOUNT" \
     --arg callback_group "$CALLBACK_GROUP" \
     --arg callback_dm "$CALLBACK_DM" \
     --arg callback_account "$CALLBACK_ACCOUNT" \
@@ -180,12 +184,13 @@ jq -n \
     --arg max_budget "${MAX_BUDGET_USD:-}" \
     --arg max_turns "${MAX_TURNS:-}" \
     --arg worktree "${WORKTREE:-}" \
-    '{task_name: $name, telegram_group: $group, callback_group: $callback_group, callback_dm: $callback_dm, callback_account: $callback_account, callback_session: $session, prompt: $prompt, workdir: $workdir, started_at: $ts, agent_teams: ($agent_teams == "1"), agent_id: $agent_id, model: $model, fallback_model: $fallback_model, max_budget_usd: $max_budget, max_turns: $max_turns, worktree: $worktree, status: "running"}' \
+    '{task_name: $name, telegram_group: $group, telegram_account: $telegram_account, callback_group: $callback_group, callback_dm: $callback_dm, callback_account: $callback_account, callback_session: $session, prompt: $prompt, workdir: $workdir, started_at: $ts, agent_teams: ($agent_teams == "1"), agent_id: $agent_id, model: $model, fallback_model: $fallback_model, max_budget_usd: $max_budget, max_turns: $max_turns, worktree: $worktree, status: "running"}' \
     > "$META_FILE"
 
 echo "📋 Task metadata written: $META_FILE"
 echo "   Task: $TASK_NAME"
 echo "   Group: ${TELEGRAM_GROUP:-none}"
+[ -n "$TELEGRAM_ACCOUNT" ] && echo "   Account: ${TELEGRAM_ACCOUNT}"
 echo "   Agent Teams: ${AGENT_TEAMS:-no}"
 [ -n "$MAX_BUDGET_USD" ] && echo "   Budget: \$${MAX_BUDGET_USD}"
 [ -n "$MAX_TURNS" ] && echo "   Max Turns: ${MAX_TURNS}"

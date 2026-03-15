@@ -9,10 +9,49 @@ RESULT_DIR="${CLAUDE_CODE_RESULT_DIR:-${HOME}/.openclaw/data/claude-code-results
 LOG="${RESULT_DIR}/hook.log"
 META_FILE="${RESULT_DIR}/task-meta.json"
 OPENCLAW_BIN="${OPENCLAW_BIN:-$(command -v openclaw || true)}"
+OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-${HOME}/.openclaw/openclaw.json}"
 
 mkdir -p "$RESULT_DIR"
 
 log() { echo "[$(date -Iseconds)] $*" >> "$LOG"; }
+
+send_telegram_message() {
+    local target="$1"
+    local message="$2"
+    local preferred_account="${3:-}"
+    local send_output=""
+    local acct=""
+    local -a try_accounts=()
+    local -a cmd=()
+
+    if [ -n "$preferred_account" ]; then
+        try_accounts+=("$preferred_account")
+    else
+        try_accounts+=("")
+        if [ -f "$OPENCLAW_CONFIG" ]; then
+            while IFS= read -r acct; do
+                [ -z "$acct" ] && continue
+                [ "$acct" = "default" ] && continue
+                try_accounts+=("$acct")
+            done < <(jq -r '.channels.telegram.accounts | keys[]' "$OPENCLAW_CONFIG" 2>/dev/null || true)
+        fi
+    fi
+
+    for acct in "${try_accounts[@]}"; do
+        cmd=("$OPENCLAW_BIN" message send --channel telegram --target "$target" --message "$message")
+        [ -n "$acct" ] && cmd+=(--account "$acct")
+
+        send_output="$("${cmd[@]}" 2>&1)"
+        if [ $? -eq 0 ]; then
+            log "Telegram send ok target=$target account=${acct:-default}"
+            return 0
+        fi
+
+        log "Telegram send failed target=$target account=${acct:-default}: $(echo "$send_output" | tail -n 5 | tr '\n' ' ' | cut -c1-500)"
+    done
+
+    return 1
+}
 
 log "=== Hook fired ==="
 
@@ -74,6 +113,7 @@ fi
 # ---- 读取任务元数据（仅当 meta 文件足够新时才信任）----
 TASK_NAME="unknown"
 TELEGRAM_GROUP=""
+TELEGRAM_ACCOUNT=""
 
 if [ -f "$META_FILE" ]; then
     # 检查 meta 文件是否在最近 2 小时内写入（防止复用旧任务的 meta）
@@ -88,10 +128,11 @@ if [ -f "$META_FILE" ]; then
         else
             TASK_NAME=$(jq -r '.task_name // "unknown"' "$META_FILE" 2>/dev/null || echo "unknown")
             TELEGRAM_GROUP=$(jq -r '.telegram_group // ""' "$META_FILE" 2>/dev/null || echo "")
+            TELEGRAM_ACCOUNT=$(jq -r '.telegram_account // ""' "$META_FILE" 2>/dev/null || echo "")
             CALLBACK_GROUP=$(jq -r '.callback_group // ""' "$META_FILE" 2>/dev/null || echo "")
             CALLBACK_DM=$(jq -r '.callback_dm // ""' "$META_FILE" 2>/dev/null || echo "")
             CALLBACK_ACCOUNT=$(jq -r '.callback_account // ""' "$META_FILE" 2>/dev/null || echo "")
-            log "Meta: task=$TASK_NAME group=$TELEGRAM_GROUP callback_group=$CALLBACK_GROUP callback_dm=$CALLBACK_DM callback_account=$CALLBACK_ACCOUNT age=${META_AGE}s"
+            log "Meta: task=$TASK_NAME group=$TELEGRAM_GROUP telegram_account=${TELEGRAM_ACCOUNT:-default} callback_group=$CALLBACK_GROUP callback_dm=$CALLBACK_DM callback_account=$CALLBACK_ACCOUNT age=${META_AGE}s"
         fi
     fi
 fi
@@ -224,10 +265,9 @@ ${FILE_TREE}"
         fi
     fi
 
-    "$OPENCLAW_BIN" message send \
-        --channel telegram \
-        --target "$TELEGRAM_GROUP" \
-        --message "$MSG" 2>/dev/null && log "Sent rich Telegram message to $TELEGRAM_GROUP" || log "Telegram send failed"
+    send_telegram_message "$TELEGRAM_GROUP" "$MSG" "$TELEGRAM_ACCOUNT" && \
+        log "Sent rich Telegram message to $TELEGRAM_GROUP" || \
+        log "Telegram send failed after retry chain target=$TELEGRAM_GROUP"
 
     # ---- 回调通知: 发到调用者 agent 的群（如果不同于通知群）----
     if [ -n "$CALLBACK_GROUP" ] && [ "$CALLBACK_GROUP" != "$TELEGRAM_GROUP" ]; then
@@ -244,10 +284,9 @@ ${FILE_TREE}"
 
 📝 *摘要:* ${SUMMARY}"
 
-        "$OPENCLAW_BIN" message send \
-            --channel telegram \
-            --target "$CALLBACK_GROUP" \
-            --message "$CALLBACK_MSG" 2>/dev/null && log "Sent callback to agent group $CALLBACK_GROUP" || log "Callback to $CALLBACK_GROUP failed"
+        send_telegram_message "$CALLBACK_GROUP" "$CALLBACK_MSG" "$CALLBACK_ACCOUNT" && \
+            log "Sent callback to agent group $CALLBACK_GROUP" || \
+            log "Callback to $CALLBACK_GROUP failed"
     fi
 
     # ---- DM 回调: 通过指定 bot account 发 DM 给调用者 ----
@@ -264,10 +303,9 @@ ${FILE_TREE}"
 
 📝 *摘要:* ${SUMMARY}"
 
-        DM_CMD=("$OPENCLAW_BIN" message send --channel telegram --target "$CALLBACK_DM" --message "$CALLBACK_MSG")
-        [ -n "$CALLBACK_ACCOUNT" ] && DM_CMD+=(--account "$CALLBACK_ACCOUNT")
-
-        "${DM_CMD[@]}" 2>/dev/null && log "Sent DM callback to $CALLBACK_DM (account=${CALLBACK_ACCOUNT:-default})" || log "DM callback to $CALLBACK_DM failed"
+        send_telegram_message "$CALLBACK_DM" "$CALLBACK_MSG" "$CALLBACK_ACCOUNT" && \
+            log "Sent DM callback to $CALLBACK_DM (account=${CALLBACK_ACCOUNT:-default})" || \
+            log "DM callback to $CALLBACK_DM failed"
     fi
 fi
 
