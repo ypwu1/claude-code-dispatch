@@ -37,11 +37,12 @@
 
 set -euo pipefail
 
-RESULT_DIR="/home/ubuntu/clawd/data/claude-code-results"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+WORKSPACE_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+RESULT_DIR="${CLAUDE_CODE_RESULT_DIR:-${HOME}/.openclaw/data/claude-code-results}"
 META_FILE="${RESULT_DIR}/task-meta.json"
 OUTPUT_FILE="/tmp/claude-code-output.txt"
 TASK_OUTPUT="${RESULT_DIR}/task-output.txt"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 RUNNER="${SCRIPT_DIR}/claude_code_run.py"
 
 # Defaults
@@ -53,7 +54,7 @@ CALLBACK_GROUP=""              # Agent's own group for callback
 CALLBACK_DM=""                 # Telegram user ID for DM callback
 CALLBACK_ACCOUNT=""            # Telegram bot account for DM callback
 CALLBACK_SESSION="${OPENCLAW_SESSION_KEY:-}"
-WORKDIR="/home/ubuntu/clawd"
+WORKDIR="${WORKSPACE_ROOT}"
 AGENT_TEAMS=""
 AGENT_ID=""
 AGENTS_JSON=""
@@ -256,6 +257,9 @@ fi
 # ---- 4. Set environment ----
 export OPENCLAW_GATEWAY_TOKEN="${OPENCLAW_GATEWAY_TOKEN:-477d47934e5f6b02bfb823ba681bb743eae55479b7d260e8}"
 export OPENCLAW_GATEWAY="${OPENCLAW_GATEWAY:-http://127.0.0.1:18789}"
+export OPENCLAW_BIN="${OPENCLAW_BIN:-$(command -v openclaw || true)}"
+export OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-${HOME}/.openclaw/openclaw.json}"
+export CLAUDE_CODE_BIN="${CLAUDE_CODE_BIN:-$(command -v claude || true)}"
 
 # ---- 5. Run Claude Code (output tee'd for hook) ----
 echo "🚀 Launching Claude Code..."

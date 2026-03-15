@@ -5,10 +5,10 @@
 
 set -uo pipefail
 
-LOG="/home/ubuntu/clawd/data/claude-code-results/hook.log"
-RESULT_DIR="/home/ubuntu/clawd/data/claude-code-results"
+RESULT_DIR="${CLAUDE_CODE_RESULT_DIR:-${HOME}/.openclaw/data/claude-code-results}"
+LOG="${RESULT_DIR}/hook.log"
 META_FILE="${RESULT_DIR}/task-meta.json"
-OPENCLAW_BIN="/home/ubuntu/.npm-global/bin/openclaw"
+OPENCLAW_BIN="${OPENCLAW_BIN:-$(command -v openclaw || true)}"
 
 mkdir -p "$RESULT_DIR"
 
@@ -294,7 +294,7 @@ GATEWAY_PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
 HOOK_TOKEN=""
 
 # 从 config 文件读取 webhook token
-OPENCLAW_CONFIG="/home/ubuntu/.openclaw/openclaw.json"
+OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-${HOME}/.openclaw/openclaw.json}"
 if [ -f "$OPENCLAW_CONFIG" ]; then
     HOOK_TOKEN=$(jq -r '.hooks.token // ""' "$OPENCLAW_CONFIG" 2>/dev/null || echo "")
 fi
